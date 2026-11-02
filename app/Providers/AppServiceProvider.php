@@ -2,19 +2,25 @@
 
 namespace App\Providers;
 
+use App\Models\Category;
+use App\Models\Product;
 use App\Services\CartService;
 use App\Services\StoreSettings;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->app->scoped(StoreSettings::class);
+        $this->app->scoped(CartService::class);
     }
 
     public function boot(): void
@@ -27,8 +33,31 @@ class AppServiceProvider extends ServiceProvider
             $view->with('store', app(StoreSettings::class));
         });
 
-        View::composer('layouts.app', function ($view) {
-            $view->with('cartCount', app(CartService::class)->count());
+        // Cart snapshot for the header badge, floating cart bar and ADD/stepper buttons on product cards.
+        View::composer(['layouts.app', 'partials.product-card', 'partials.add-to-cart'], function ($view) {
+            $cart = app(CartService::class)->state();
+            $view->with(['cartState' => $cart, 'cartCount' => $cart['count']]);
         });
+
+        View::composer('partials.search', function ($view) {
+            $view->with([
+                'navCategories' => Category::active()->whereNull('parent_id')->ordered()->get(),
+                // Best sellers (featured first) as one-tap "trending" searches; refreshed every 10 minutes.
+                'trendingSearches' => Cache::remember('search:trending', now()->addMinutes(10), fn () => Product::active()
+                    ->withSum('orderItems as sold_qty', 'quantity')
+                    ->orderByDesc('is_featured')
+                    ->orderByDesc('sold_qty')
+                    ->take(6)
+                    ->pluck('name')
+                    ->map(fn ($name) => Str::of($name)->before(' - ')->words(3, '')->trim()->value())
+                    ->unique()
+                    ->values()
+                    ->all()),
+            ]);
+        });
+
+        // Turbo reloads the page fully when the asset build changes.
+        Vite::useScriptTagAttributes(['data-turbo-track' => 'reload']);
+        Vite::useStyleTagAttributes(['data-turbo-track' => 'reload']);
     }
 }

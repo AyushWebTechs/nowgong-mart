@@ -8,6 +8,7 @@ use App\Http\Controllers\Delivery\DeliveryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [Customer\HomeController::class, 'index'])->name('home');
+Route::get('/search/suggest', [Customer\SearchController::class, 'suggest'])->middleware('throttle:120,1')->name('search.suggest');
 Route::get('/products', [Customer\ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [Customer\ProductController::class, 'show'])->name('products.show');
 Route::get('/categories/{category}', [Customer\CategoryController::class, 'show'])->name('categories.show');

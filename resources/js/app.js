@@ -1,39 +1,25 @@
+// Turbo Drive: every link click and form submit becomes a fetch + page swap (no full reloads),
+// with hover prefetching, a progress bar, view transitions and morphing refreshes.
+import * as Turbo from '@hotwired/turbo';
+
+import './ui';
+import './cart';
+import './search';
+import './infinite';
+
+Turbo.config.drive.progressBarDelay = 120;
+
+// Keep already-loaded images visible when Turbo morphs the page in place.
+document.addEventListener('turbo:before-morph-attribute', event => {
+    const { target, detail } = event;
+    if (detail.attributeName === 'class' && target.matches?.('img.fade-img.is-loaded, span:has(> img.fade-img.is-loaded)')) {
+        event.preventDefault();
+    }
+});
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .catch(error => console.error('SW registration failed:', error));
     });
 }
-
-document.addEventListener('submit', event => {
-    const message = event.target.dataset.confirm;
-    if (message && !window.confirm(message)) {
-        event.preventDefault();
-    }
-});
-
-document.addEventListener('click', event => {
-    const button = event.target.closest('[data-step]');
-    if (!button) return;
-    const input = button.parentElement.querySelector('input[type=number]');
-    if (!input) return;
-    const step = parseFloat(input.step || '1');
-    const min = parseFloat(input.min || step);
-    const next = Math.max(min, (parseFloat(input.value || '0') + step * parseInt(button.dataset.step, 10)));
-    input.value = Number.isInteger(step) ? next : next.toFixed(2);
-});
-
-let deferredInstall = null;
-window.addEventListener('beforeinstallprompt', event => {
-    event.preventDefault();
-    deferredInstall = event;
-    document.querySelectorAll('[data-install]').forEach(el => el.classList.remove('hidden'));
-});
-
-document.addEventListener('click', async event => {
-    if (!event.target.closest('[data-install]') || !deferredInstall) return;
-    deferredInstall.prompt();
-    await deferredInstall.userChoice;
-    deferredInstall = null;
-    document.querySelectorAll('[data-install]').forEach(el => el.classList.add('hidden'));
-});

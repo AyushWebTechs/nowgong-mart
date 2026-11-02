@@ -75,6 +75,7 @@ class CartService
         $item->quantity = $newQuantity;
         $item->save();
         $cart->touch();
+        $this->state = null;
     }
 
     public function update(CartItem $item, mixed $rawQuantity): void
@@ -84,11 +85,13 @@ class CartService
         $this->assertStock($product, $quantity);
 
         $item->update(['quantity' => $quantity]);
+        $this->state = null;
     }
 
     public function remove(CartItem $item): void
     {
         $item->delete();
+        $this->state = null;
     }
 
     public function owns(CartItem $item): bool
@@ -125,6 +128,38 @@ class CartService
     {
         return $this->current()?->items()->count() ?? 0;
     }
+
+    /**
+     * Compact cart snapshot for the UI (badges, floating cart bar, ADD/stepper buttons). Memoised per request.
+     *
+     * @return array{count: int, subtotal: string, subtotal_label: string, items: array<int, array{id: int, qty: string}>}
+     */
+    public function state(): array
+    {
+        if ($this->state !== null) {
+            return $this->state;
+        }
+
+        $items = $this->current()?->items()->with('product:id,price')->get() ?? collect();
+        $subtotal = '0.00';
+        $map = [];
+
+        foreach ($items as $item) {
+            $map[$item->product_id] = ['id' => $item->id, 'qty' => Money::qty($item->quantity)];
+            if ($item->product) {
+                $subtotal = Money::add($subtotal, Money::lineTotal($item->product->price, $item->quantity));
+            }
+        }
+
+        return $this->state = [
+            'count' => $items->count(),
+            'subtotal' => $subtotal,
+            'subtotal_label' => Money::format($subtotal),
+            'items' => $map,
+        ];
+    }
+
+    private ?array $state = null;
 
     /**
      * @return array{cart: ?Cart, lines: array, subtotal: string, delivery_fee: string, total: string, min_order: string, meets_minimum: bool, has_issues: bool, is_empty: bool}

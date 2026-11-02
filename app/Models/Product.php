@@ -74,6 +74,21 @@ class Product extends Model
             ->whereHas('category', fn (Builder $q) => $q->where('is_active', true));
     }
 
+    /** Storefront sort options; anything else keeps the existing order (e.g. search relevance) then name. */
+    public const SORTS = ['price_asc' => 'Price: low to high', 'price_desc' => 'Price: high to low', 'discount' => 'Biggest discount'];
+
+    public function scopeSorted(Builder $query, ?string $sort): Builder
+    {
+        return match ($sort) {
+            'price_asc' => $query->reorder()->orderBy('price')->orderBy('name'),
+            'price_desc' => $query->reorder()->orderByDesc('price')->orderBy('name'),
+            'discount' => $query->reorder()
+                ->orderByRaw('CASE WHEN mrp > price THEN (mrp - price) / mrp ELSE 0 END DESC')
+                ->orderBy('name'),
+            default => $query->orderBy('name'),
+        };
+    }
+
     public function scopeLowStock(Builder $query): Builder
     {
         return $query->where('track_stock', true)->whereColumn('stock_qty', '<=', 'low_stock_threshold');

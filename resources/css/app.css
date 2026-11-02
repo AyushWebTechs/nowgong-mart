@@ -7,43 +7,78 @@
 @source '../../app/Enums/*.php';
 
 @theme {
-    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
     --color-brand-50: #ecf8f1;
     --color-brand-100: #d2eedf;
     --color-brand-200: #a7dcc1;
+    --color-brand-300: #6fc49c;
+    --color-brand-400: #3aa874;
     --color-brand-500: #1f8a5a;
     --color-brand-600: #176b45;
     --color-brand-700: #12553a;
     --color-brand-800: #0e432e;
+    --color-brand-900: #0a3022;
+    --color-accent-400: #fbbf24;
+
+    --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 16px -4px rgb(16 24 40 / 0.08);
+    --shadow-lift: 0 2px 4px rgb(16 24 40 / 0.06), 0 16px 32px -8px rgb(16 24 40 / 0.16);
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+    --animate-fade-up: fade-up 0.5s var(--ease-out-expo) both;
+    --animate-pop: pop 0.4s var(--ease-spring);
+    --animate-shimmer: shimmer 1.4s linear infinite;
+
+    @keyframes fade-up {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: none; }
+    }
+    @keyframes pop {
+        0% { transform: scale(1); }
+        40% { transform: scale(1.35); }
+        100% { transform: scale(1); }
+    }
+    @keyframes shimmer {
+        from { background-position: -200% 0; }
+        to { background-position: 200% 0; }
+    }
+}
+
+@layer base {
+    html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
+    body { font-feature-settings: 'cv11', 'ss01'; }
+    ::selection { background: var(--color-brand-200); }
+    [hidden] { display: none !important; }
 }
 
 @layer components {
     .btn {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
     }
     .btn-primary {
-        @apply bg-brand-600 text-white hover:bg-brand-700;
+        @apply bg-brand-600 text-white shadow-sm shadow-brand-900/20 hover:bg-brand-700;
     }
     .btn-secondary {
-        @apply border border-gray-300 bg-white text-gray-800 hover:bg-gray-50;
+        @apply border border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:bg-gray-50;
     }
     .btn-danger {
         @apply bg-rose-600 text-white hover:bg-rose-700;
     }
     .btn-sm {
-        @apply px-3 py-1.5 text-xs;
+        @apply rounded-lg px-3 py-1.5 text-xs;
     }
     .input {
-        @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none;
+        @apply block w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm transition placeholder:text-gray-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none;
     }
     .label {
-        @apply mb-1 block text-sm font-medium text-gray-700;
+        @apply mb-1 block text-sm font-semibold text-gray-700;
     }
     .card {
-        @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+        @apply rounded-2xl border border-gray-100 bg-white shadow-(--shadow-soft);
     }
     .badge {
-        @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+        @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold;
     }
     .error {
         @apply mt-1 text-xs text-rose-600;
@@ -57,4 +92,84 @@
     .table td {
         @apply px-3 py-2 align-top text-gray-800;
     }
+
+    /* Horizontal scrolling product rails. */
+    .rail {
+        @apply -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-2;
+        scrollbar-width: none;
+    }
+    .rail::-webkit-scrollbar { display: none; }
+    .rail > * { @apply w-[44%] shrink-0 snap-start sm:w-[30%] md:w-[22%] lg:w-[16%]; }
+
+    .chip {
+        @apply inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-gray-700 transition hover:border-brand-300 hover:text-brand-700 active:scale-95;
+    }
+    .chip-active {
+        @apply border-brand-600 bg-brand-600 text-white hover:text-white;
+    }
+
+    /* ADD → stepper control. */
+    .atc-btn {
+        @apply w-full rounded-xl border-2 border-brand-600 bg-brand-50 py-1.5 text-sm font-extrabold tracking-wide text-brand-700 transition duration-150 hover:bg-brand-600 hover:text-white active:scale-95;
+    }
+    .atc-stepper {
+        @apply flex w-full items-center justify-between rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-900/30;
+        animation: var(--animate-pop);
+    }
+    .atc-stepper button {
+        @apply grid h-9 w-9 place-items-center rounded-xl text-lg font-bold transition hover:bg-brand-700 active:scale-90;
+    }
+    .atc-stepper [data-atc-qty] { @apply min-w-6 text-center text-sm font-extrabold tabular-nums; }
+    .atc-lg .atc-btn { @apply py-3 text-base; }
+    .atc-lg .atc-stepper button { @apply h-12 w-12; }
+    .atc-lg .atc-stepper [data-atc-qty] { @apply text-base; }
+    .atc-out {
+        @apply block rounded-xl bg-gray-100 py-2 text-center text-xs font-bold text-gray-500;
+    }
+
+    /* Image placeholder shimmer until the image has loaded. */
+    .skeleton {
+        background: linear-gradient(90deg, #f3f4f6 25%, #e9ebee 37%, #f3f4f6 63%);
+        background-size: 400% 100%;
+        animation: var(--animate-shimmer);
+    }
+    .fade-img { @apply opacity-0 transition-opacity duration-500; }
+    .fade-img.is-loaded { @apply opacity-100; }
+
+    .reveal > * { animation: var(--animate-fade-up); animation-delay: calc(min(var(--i, 0), 12) * 40ms); }
+    .pop { animation: var(--animate-pop); }
+
+    .glass { @apply bg-white/80 backdrop-blur-xl backdrop-saturate-150; }
+
+    mark { @apply rounded bg-brand-100 px-0.5 text-brand-800; }
+}
+
+/* Turbo progress bar. */
+.turbo-progress-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--color-brand-400), var(--color-accent-400));
+}
+
+/* Page transitions (Turbo uses the View Transitions API when both pages opt in). */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 180ms;
+    animation-timing-function: ease-out;
+}
+::view-transition-group(product-hero) {
+    animation-duration: 320ms;
+    animation-timing-function: var(--ease-out-expo);
+}
+.vt-header { view-transition-name: site-header; }
+.vt-tabbar { view-transition-name: tab-bar; }
+.vt-cartbar { view-transition-name: cart-bar; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

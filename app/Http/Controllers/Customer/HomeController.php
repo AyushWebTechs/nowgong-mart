@@ -30,8 +30,16 @@ class HomeController extends Controller
             ->take(12)
             ->get();
 
+        $deals = Product::active()
+            ->with('category')
+            ->whereColumn('mrp', '>', 'price')
+            ->orderByRaw('(mrp - price) / mrp DESC')
+            ->take(10)
+            ->get();
+
         return view('customer.home', [
             'categories' => $categories,
+            'deals' => $deals,
             'iceCream' => $iceCream,
             'iceCreamFrom' => $iceCream->min('price'),
             'popular' => $popular,

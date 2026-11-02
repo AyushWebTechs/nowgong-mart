@@ -3,66 +3,78 @@
 @section('title', $product->name)
 
 @section('content')
-    <nav class="mb-4 text-sm text-gray-500" aria-label="Breadcrumb">
-        <a href="{{ route('home') }}" class="hover:text-brand-700">Home</a> ›
-        <a href="{{ route('categories.show', $product->category) }}" class="hover:text-brand-700">{{ $product->category->name }}</a> ›
-        <span class="text-gray-800">{{ $product->name }}</span>
+    <nav class="mb-4 flex items-center gap-1 overflow-x-auto text-sm whitespace-nowrap text-gray-500" aria-label="Breadcrumb">
+        <a href="{{ route('home') }}" class="hover:text-brand-700">Home</a>
+        <x-icon name="chevron-right" class="size-3.5" />
+        <a href="{{ route('categories.show', $product->category) }}" class="hover:text-brand-700">{{ $product->category->name }}</a>
+        <x-icon name="chevron-right" class="size-3.5" />
+        <span class="truncate font-semibold text-gray-800">{{ $product->name }}</span>
     </nav>
 
-    <div class="card grid gap-6 p-4 md:grid-cols-2 md:p-6">
-        <div class="aspect-square overflow-hidden rounded-xl bg-gray-50">
-            @include('partials.product-image', ['product' => $product])
+    <div class="grid gap-6 md:grid-cols-2 md:gap-10">
+        <div class="relative aspect-square overflow-hidden rounded-3xl bg-white p-3 shadow-(--shadow-soft) md:sticky md:top-24 md:self-start">
+            <div class="h-full w-full overflow-hidden rounded-2xl">
+                @include('partials.product-image', ['product' => $product, 'loading' => 'eager', 'vt' => 'product-hero'])
+            </div>
+            @if ($product->discountPercent())
+                <span class="absolute top-6 left-6 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 px-3 py-1.5 text-sm font-extrabold text-white shadow-lg">{{ $product->discountPercent() }}% OFF</span>
+            @endif
         </div>
-        <div>
-            <h1 class="text-2xl font-bold">{{ $product->name }}</h1>
-            <p class="mt-1 text-sm text-gray-500">Sold per {{ $product->unit }} · SKU {{ $product->sku }}</p>
 
-            <div class="mt-4 flex items-baseline gap-3">
-                <span class="text-3xl font-extrabold">{{ money($product->price) }}</span>
+        <div class="reveal">
+            <a href="{{ route('categories.show', $product->category) }}" class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">{{ $product->category->name }}</a>
+            <h1 class="mt-3 text-2xl leading-tight font-extrabold tracking-tight sm:text-3xl">{{ $product->name }}</h1>
+            <p class="mt-1 text-sm text-gray-500">Sold per {{ $product->unit }}</p>
+
+            <div class="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span class="text-3xl font-extrabold tracking-tight">{{ money($product->price) }}</span>
                 @if ($product->discountPercent())
                     <span class="text-gray-400 line-through">MRP {{ money($product->mrp) }}</span>
-                    <span class="badge bg-amber-400 text-amber-950">{{ $product->discountPercent() }}% off</span>
+                    <span class="badge bg-emerald-100 text-emerald-800">You save {{ money(bcsub($product->mrp, $product->price, 2)) }}</span>
                 @endif
             </div>
+            <p class="text-xs text-gray-500">Inclusive of all taxes</p>
 
-            <p class="mt-2 text-sm">
+            <p class="mt-3 text-sm">
                 @if (! $product->isInStock())
-                    <span class="font-semibold text-rose-600">Out of stock</span>
+                    <span class="inline-flex items-center gap-1.5 font-bold text-rose-600"><span class="size-2 rounded-full bg-rose-500"></span> Out of stock</span>
                 @elseif ($product->isLowStock())
-                    <span class="font-semibold text-amber-700">Only {{ qty($product->stock_qty) }} {{ $product->unit }} left</span>
+                    <span class="inline-flex items-center gap-1.5 font-bold text-amber-700"><span class="size-2 animate-pulse rounded-full bg-amber-500"></span> Hurry, only {{ qty($product->stock_qty) }} {{ $product->unit }} left</span>
                 @else
-                    <span class="font-semibold text-emerald-700">In stock</span>
+                    <span class="inline-flex items-center gap-1.5 font-bold text-emerald-700"><span class="size-2 rounded-full bg-emerald-500"></span> In stock</span>
                 @endif
             </p>
 
-            @if ($product->isInStock())
-                <form method="POST" action="{{ route('cart.items.store') }}" class="mt-5 flex flex-wrap items-end gap-3">
-                    @csrf
-                    <input type="hidden" name="product_id" value="{{ $product->id }}">
-                    <div>
-                        <label for="quantity" class="label">Quantity ({{ $product->unit }})</label>
-                        <div class="flex items-center gap-1">
-                            <button type="button" data-step="-1" class="btn btn-secondary px-3" aria-label="Decrease">−</button>
-                            <input id="quantity" type="number" name="quantity" value="1" min="{{ $product->quantityStep() }}" step="{{ $product->quantityStep() }}" max="99" class="input w-20 text-center">
-                            <button type="button" data-step="1" class="btn btn-secondary px-3" aria-label="Increase">+</button>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary">Add to cart</button>
-                </form>
-            @endif
+            <div class="mt-5 max-w-xs">
+                @include('partials.add-to-cart', ['product' => $product, 'class' => 'atc-lg'])
+            </div>
+
+            <div class="mt-6 grid grid-cols-3 gap-2 text-center text-[11px] font-bold text-gray-600">
+                <div class="rounded-2xl bg-white p-3 shadow-(--shadow-soft)"><x-icon name="truck" class="mx-auto mb-1 size-5 text-brand-600" />Fast delivery</div>
+                <div class="rounded-2xl bg-white p-3 shadow-(--shadow-soft)"><x-icon name="wallet" class="mx-auto mb-1 size-5 text-brand-600" />COD & UPI</div>
+                <div class="rounded-2xl bg-white p-3 shadow-(--shadow-soft)"><x-icon name="shield" class="mx-auto mb-1 size-5 text-brand-600" />Genuine product</div>
+            </div>
 
             @if ($product->description)
-                <div class="mt-6 border-t pt-4 text-sm leading-relaxed whitespace-pre-line text-gray-700">{{ $product->description }}</div>
+                <div class="mt-6 rounded-2xl bg-white p-4 shadow-(--shadow-soft)">
+                    <h2 class="mb-1 text-sm font-extrabold">About this product</h2>
+                    <div class="text-sm leading-relaxed whitespace-pre-line text-gray-700">{{ $product->description }}</div>
+                </div>
             @endif
         </div>
     </div>
 
-    @if ($related->isNotEmpty())
-        <h2 class="mt-8 mb-3 text-lg font-bold">More from {{ $product->category->name }}</h2>
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            @foreach ($related as $item)
-                @include('partials.product-card', ['product' => $item])
-            @endforeach
-        </div>
-    @endif
+    <div class="mt-10">
+        @include('partials.product-rail', [
+            'title' => 'Frequently bought together',
+            'subtitle' => 'Customers who bought this also added',
+            'products' => $boughtWith,
+        ])
+        @include('partials.product-rail', [
+            'title' => 'Similar products',
+            'subtitle' => 'You might also like',
+            'products' => $similar,
+            'link' => route('categories.show', $product->category),
+        ])
+    </div>
 @endsection
