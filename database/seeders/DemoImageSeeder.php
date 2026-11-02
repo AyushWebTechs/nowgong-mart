@@ -8,8 +8,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Gives demo products and categories without an image a picture: the bundled photo from
- * database/seeders/images when one exists, otherwise a generated (GD) placeholder.
+ * Gives demo products and categories without an image (or whose file is missing) a picture:
+ * the bundled photo from database/seeders/images when one exists, otherwise a generated (GD)
+ * placeholder. Safe to run on every boot.
  * Local/dev only — real shops upload photos from the admin panel.
  */
 class DemoImageSeeder extends Seeder
@@ -38,13 +39,13 @@ class DemoImageSeeder extends Seeder
         $this->font = collect(['C:/Windows/Fonts/arialbd.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'])
             ->first(fn ($path) => is_file($path));
 
-        foreach (Category::whereNull('image_path')->get() as $category) {
+        foreach (Category::all()->filter(fn ($c) => $this->missing($c->image_path)) as $category) {
             $path = "categories/{$category->slug}.png";
             $this->store($path, $this->render($category->name, null, self::COLORS[$category->slug] ?? self::FALLBACK, 200));
             $category->update(['image_path' => $path]);
         }
 
-        foreach (Product::with('category')->whereNull('image_path')->get() as $product) {
+        foreach (Product::with('category')->get()->filter(fn ($p) => $this->missing($p->image_path)) as $product) {
             // Prefer a real photo shipped in database/seeders/images (see CREDITS.md there).
             $photo = database_path("seeders/images/products/{$product->slug}.jpg");
 
@@ -61,6 +62,12 @@ class DemoImageSeeder extends Seeder
             $this->store($path, $this->render($product->name, '₹'.rtrim(rtrim((string) $product->price, '0'), '.').' / '.$product->unit, $colors, 600));
             $product->update(['image_path' => $path]);
         }
+    }
+
+    /** No image yet, or its file is gone (e.g. an ephemeral disk was reset). */
+    private function missing(?string $path): bool
+    {
+        return ! $path || ! Storage::disk('public')->exists($path);
     }
 
     private function store(string $path, string $png): void

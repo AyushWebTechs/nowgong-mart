@@ -12,6 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind a tunnel / PaaS load balancer: honour X-Forwarded-* so URLs come out as https.
+        $middleware->trustProxies(at: '*');
         $middleware->alias(['role' => RoleMiddleware::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route(auth()->user()->role->homeRoute()));

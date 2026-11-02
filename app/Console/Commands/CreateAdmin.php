@@ -10,18 +10,21 @@ use Illuminate\Validation\Rules\Password;
 
 class CreateAdmin extends Command
 {
-    protected $signature = 'mart:create-admin';
+    protected $signature = 'mart:create-admin
+        {--name= : Owner name (skips the prompt)}
+        {--phone= : Mobile number / login ID (skips the prompt)}
+        {--password= : Password (skips both password prompts; for unattended deploys)}';
 
     protected $description = 'Create (or promote) the store owner admin account';
 
     public function handle(): int
     {
         $data = [
-            'name' => $this->ask('Owner name'),
-            'phone' => $this->ask('Mobile number (login ID, 10 digits)'),
-            'password' => $this->secret('Password (min. 12 characters)'),
+            'name' => $this->option('name') ?? $this->ask('Owner name'),
+            'phone' => $this->option('phone') ?? $this->ask('Mobile number (login ID, 10 digits)'),
+            'password' => $this->option('password') ?? $this->secret('Password (min. 12 characters)'),
         ];
-        $data['password_confirmation'] = $this->secret('Repeat password');
+        $data['password_confirmation'] = $this->option('password') ?? $this->secret('Repeat password');
 
         $validator = Validator::make($data, [
             'name' => ['required', 'string', 'max:100'],
