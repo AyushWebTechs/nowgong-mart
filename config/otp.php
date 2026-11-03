@@ -11,8 +11,9 @@ return [
     /*
     | Demo mode shows the code on the verify screen so the site can be tried without an SMS
     | provider. Anyone can then log in as any customer number - keep it off once SMS works.
+    | Defaults to on while the "log" driver is used, since nobody could receive a code otherwise.
     */
-    'demo' => (bool) env('OTP_DEMO', false),
+    'demo' => (bool) env('OTP_DEMO', env('OTP_DRIVER', 'log') === 'log'),
 
     'length' => 6,
     'ttl_minutes' => 5,
