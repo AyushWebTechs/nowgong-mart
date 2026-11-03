@@ -18,8 +18,12 @@ class RoleAccessTest extends TestCase
 
     public function test_guest_is_redirected_to_login_from_private_areas(): void
     {
-        foreach (['admin.dashboard', 'delivery.index', 'checkout.create', 'orders.index'] as $route) {
+        foreach (['checkout.create', 'orders.index'] as $route) {
             $this->get(route($route))->assertRedirect(route('login'));
+        }
+
+        foreach (['admin.dashboard', 'admin.orders.index', 'delivery.index'] as $route) {
+            $this->get(route($route))->assertRedirect(route('staff.login'));
         }
     }
 
@@ -80,6 +84,6 @@ class RoleAccessTest extends TestCase
         $this->get(route('categories.show', $product->category))->assertOk();
         $this->get(route('cart.index'))->assertOk();
         $this->get(route('pages.show', 'privacy'))->assertOk();
-        $this->get(route('home'))->assertSee('manifest.webmanifest', false);
+        $this->get(route('home'))->assertDontSee('manifest.webmanifest', false)->assertDontSee('Install app');
     }
 }

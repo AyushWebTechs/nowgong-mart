@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\OtpLoginController;
 use App\Http\Controllers\Customer;
 use App\Http\Controllers\Delivery\DeliveryController;
 use Illuminate\Support\Facades\Route;
@@ -22,10 +22,16 @@ Route::patch('/cart/items/{cartItem}', [Customer\CartController::class, 'update'
 Route::delete('/cart/items/{cartItem}', [Customer\CartController::class, 'destroy'])->name('cart.items.destroy');
 
 Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class, 'create'])->name('login');
-    Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:login');
-    Route::get('/register', [RegisterController::class, 'create'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:register');
+    // Customers: mobile number + SMS code (signs up new numbers too).
+    Route::get('/login', [OtpLoginController::class, 'create'])->name('login');
+    Route::post('/login/otp', [OtpLoginController::class, 'send'])->middleware('throttle:otp-send')->name('login.otp');
+    Route::get('/login/verify', [OtpLoginController::class, 'showVerify'])->name('login.verify');
+    Route::post('/login/verify', [OtpLoginController::class, 'verify'])->middleware('throttle:otp-verify');
+    Route::redirect('/register', '/login')->name('register');
+
+    // Admin and delivery staff: password.
+    Route::get('/staff/login', [LoginController::class, 'create'])->name('staff.login');
+    Route::post('/staff/login', [LoginController::class, 'store'])->middleware('throttle:login');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
@@ -63,6 +69,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/orders/{order}/confirm', [Admin\OrderController::class, 'confirm'])->name('orders.confirm');
     Route::post('/orders/{order}/prepare', [Admin\OrderController::class, 'prepare'])->name('orders.prepare');
     Route::post('/orders/{order}/assign-delivery', [Admin\OrderController::class, 'assignDelivery'])->name('orders.assign-delivery');
+    Route::post('/orders/{order}/dispatch', [Admin\OrderController::class, 'dispatch'])->name('orders.dispatch');
+    Route::post('/orders/{order}/deliver', [Admin\OrderController::class, 'deliver'])->name('orders.deliver');
     Route::post('/orders/{order}/cancel', [Admin\OrderController::class, 'cancel'])->name('orders.cancel');
 
     Route::post('/payments/{payment}/verify', [Admin\PaymentController::class, 'verify'])->name('payments.verify');
@@ -74,6 +82,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/customers', [Admin\CustomerController::class, 'index'])->name('customers.index');
     Route::post('/customers/{user}/toggle', [Admin\CustomerController::class, 'toggle'])->name('customers.toggle');
+    Route::get('/login-history', [Admin\LoginHistoryController::class, 'index'])->name('login-history.index');
 
     Route::get('/settings', [Admin\SettingController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');

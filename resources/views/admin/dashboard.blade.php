@@ -2,11 +2,8 @@
 
 @section('title', 'Dashboard')
 
-@push('head')
-    <meta http-equiv="refresh" content="60">
-@endpush
-
 @section('content')
+    <div data-live-refresh="30" hidden></div>
     @use('App\Enums\OrderStatus')
 
     <div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-6">
@@ -23,7 +20,7 @@
         @endforeach
     </div>
 
-    <p class="mb-4 text-xs text-gray-500">This page refreshes every minute to show new orders.</p>
+    <p class="mb-4 text-xs text-gray-500">This page updates itself every 30 seconds to show new orders.</p>
 
     <div class="grid gap-6 lg:grid-cols-2">
         <section class="card p-4">

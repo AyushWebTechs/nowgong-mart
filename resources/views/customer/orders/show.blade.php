@@ -7,11 +7,8 @@
 @use('App\Enums\PaymentStatus')
 
 @section('content')
-    @php
-        $steps = OrderStatus::progression();
-        $currentIndex = array_search($order->status, $steps, true);
-    @endphp
-
+    {{-- Open orders refresh in place so the customer sees each step as it happens. --}}
+    <div @if ($order->status->isOpen()) data-live-refresh="15" @endif>
     <a href="{{ route('orders.index') }}" class="text-sm text-brand-700 hover:underline">← All orders</a>
     <div class="mt-2 mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -24,14 +21,37 @@
     @if ($order->status === OrderStatus::Cancelled)
         <div class="card mb-4 border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">This order was cancelled on {{ $order->cancelled_at?->format('d M Y, h:i A') }}.</div>
     @else
-        <ol class="card mb-4 grid grid-cols-5 gap-1 p-4 text-center text-[11px] sm:text-xs" aria-label="Order progress">
-            @foreach ($steps as $index => $step)
-                <li class="flex flex-col items-center gap-1">
-                    <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold {{ $index <= $currentIndex ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-500' }}">{{ $index < $currentIndex ? '✓' : $index + 1 }}</span>
-                    <span class="{{ $index <= $currentIndex ? 'font-semibold text-gray-900' : 'text-gray-500' }}">{{ $step->label() }}</span>
-                </li>
-            @endforeach
-        </ol>
+        <section class="card mb-4 grid gap-5 p-5 sm:grid-cols-2">
+            <div>
+                <p class="flex items-center gap-2 text-lg font-extrabold tracking-tight">
+                    <x-icon :name="$order->status === OrderStatus::Delivered ? 'check' : ($order->status === OrderStatus::OutForDelivery ? 'truck' : 'package')" class="size-6 text-brand-600" />
+                    {{ $order->status->customerMessage() }}
+                </p>
+                @if ($order->status === OrderStatus::Delivered && $order->delivered_at)
+                    <p class="mt-1 text-sm text-gray-500">Delivered on {{ $order->delivered_at->format('d M Y, h:i A') }}</p>
+                @elseif ($order->status->isOpen())
+                    <p class="mt-1 text-xs text-gray-400">This page updates automatically.</p>
+                @endif
+
+                @if ($order->status === OrderStatus::OutForDelivery)
+                    @php($riderPhone = $order->deliveryPerson?->phone ?? $settings->get('store_phone'))
+                    <div class="mt-4 flex items-center gap-3 rounded-2xl bg-brand-50 p-3">
+                        <span class="grid size-10 place-items-center rounded-full bg-white text-brand-700 shadow-sm"><x-icon name="truck" /></span>
+                        <div class="min-w-0 flex-1 text-sm">
+                            <p class="font-bold">{{ $order->deliveryPerson?->name ?? $settings->get('store_name') }}</p>
+                            <p class="text-xs text-gray-600">{{ $order->deliveryPerson ? 'Your delivery partner' : 'The shop is delivering your order' }}</p>
+                        </div>
+                        @if ($riderPhone)
+                            <a href="tel:+91{{ $riderPhone }}" class="btn btn-primary btn-sm"><x-icon name="phone" class="size-4" /> Call</a>
+                        @endif
+                    </div>
+                    @if ($order->payment_method === PaymentMethod::Cod && $order->payment_status !== PaymentStatus::Paid)
+                        <p class="mt-2 text-sm font-semibold text-amber-700">Keep {{ money($order->total) }} ready (Cash on Delivery).</p>
+                    @endif
+                @endif
+            </div>
+            @include('partials.order-tracker', ['order' => $order])
+        </section>
     @endif
 
     <div class="grid gap-4 lg:grid-cols-3">
@@ -104,5 +124,6 @@
                 @endif
             </section>
         </aside>
+    </div>
     </div>
 @endsection

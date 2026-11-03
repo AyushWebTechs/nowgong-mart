@@ -144,10 +144,7 @@ class OrderService
 
             $this->authorizeTransition($locked, $to, $actor);
 
-            if ($to === OrderStatus::OutForDelivery && ! $locked->delivery_person_id) {
-                throw ValidationException::withMessages(['status' => 'Assign a delivery person first.']);
-            }
-
+            // Without an assigned rider the shop itself takes the order out (admin only, see authorizeTransition).
             $locked->status = $to;
 
             if ($to === OrderStatus::Delivered) {
@@ -199,10 +196,24 @@ class OrderService
         });
     }
 
+    /** Admin sends the order out: with a rider (assigned now if chosen) or delivered by the shop itself. */
+    public function dispatch(Order $order, User $actor, ?User $rider = null): Order
+    {
+        return DB::transaction(function () use ($order, $actor, $rider) {
+            if ($rider && $rider->id !== $order->delivery_person_id) {
+                $order = $this->assignDelivery($order, $rider, $actor);
+            }
+
+            $name = $rider?->name ?? $order->deliveryPerson?->name;
+
+            return $this->transition($order, OrderStatus::OutForDelivery, $actor, $name ? "Out with {$name}" : 'Out for delivery by the shop');
+        });
+    }
+
     public function markDelivered(Order $order, User $actor, ?string $collectedAmount = null): Order
     {
         return DB::transaction(function () use ($order, $actor, $collectedAmount) {
-            $locked = $this->transition($order, OrderStatus::Delivered, $actor);
+            $locked = $this->transition($order, OrderStatus::Delivered, $actor, $actor->isAdmin() ? 'Marked delivered by the shop' : null);
 
             if ($locked->payment_method === PaymentMethod::Cod) {
                 $collected = bcadd($collectedAmount ?? '0', '0', 2);
@@ -265,7 +276,8 @@ class OrderService
     private function authorizeTransition(Order $order, OrderStatus $to, User $actor): void
     {
         $allowed = match ($actor->role) {
-            UserRole::Admin => in_array($to, [OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::Cancelled], true),
+            // The owner can run the whole flow, including dispatch and delivery when there is no rider.
+            UserRole::Admin => true,
             UserRole::Delivery => in_array($to, [OrderStatus::OutForDelivery, OrderStatus::Delivered], true)
                 && $order->delivery_person_id === $actor->id,
             UserRole::Customer => $to === OrderStatus::Cancelled && $order->user_id === $actor->id,

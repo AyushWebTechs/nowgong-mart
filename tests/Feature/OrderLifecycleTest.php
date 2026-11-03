@@ -134,6 +134,80 @@ class OrderLifecycleTest extends TestCase
         $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
     }
 
+    public function test_admin_can_run_the_whole_flow_without_a_rider(): void
+    {
+        $order = $this->placeOrder($this->customer, $this->product('10', '100.00'), 2);
+
+        $this->actingAs($this->admin)->post(route('admin.orders.confirm', $order))->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post(route('admin.orders.prepare', $order))->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post(route('admin.orders.dispatch', $order))->assertSessionHasNoErrors();
+        $this->assertSame(OrderStatus::OutForDelivery, $order->fresh()->status);
+        $this->assertNull($order->fresh()->delivery_person_id);
+
+        $this->actingAs($this->customer)->get(route('orders.show', $order))
+            ->assertSee('Your order is on the way!')
+            ->assertSee('The shop is delivering your order')
+            ->assertSee('data-live-refresh', false);
+
+        $this->actingAs($this->admin)->post(route('admin.orders.deliver', $order), ['collected_amount' => '220'])->assertSessionHasNoErrors();
+
+        $order->refresh();
+        $this->assertSame(OrderStatus::Delivered, $order->status);
+        $this->assertSame(PaymentStatus::Paid, $order->payment_status);
+        $this->assertSame($this->admin->id, $order->payment->collected_by);
+        $this->assertSame('Marked delivered by the shop', $order->statusHistory->last()->note);
+
+        $this->actingAs($this->customer)->get(route('orders.show', $order))
+            ->assertSee('Delivered. Enjoy!')
+            ->assertSee($order->delivered_at->format('d M, h:i A'))
+            ->assertDontSee('data-live-refresh', false);
+    }
+
+    public function test_admin_dispatch_with_a_rider_assigns_them(): void
+    {
+        $order = $this->placeOrder($this->customer, $this->product('10'), 1);
+        $this->actingAs($this->admin)->post(route('admin.orders.confirm', $order));
+        $this->actingAs($this->admin)->post(route('admin.orders.prepare', $order));
+
+        $this->actingAs($this->admin)->post(route('admin.orders.dispatch', $order), ['delivery_person_id' => $this->rider->id])->assertSessionHasNoErrors();
+
+        $order->refresh();
+        $this->assertSame(OrderStatus::OutForDelivery, $order->status);
+        $this->assertSame($this->rider->id, $order->delivery_person_id);
+        $this->assertSame("Out with {$this->rider->name}", $order->statusHistory->last()->note);
+
+        $this->actingAs($this->customer)->get(route('orders.show', $order))->assertSee($this->rider->name)->assertSee("tel:+91{$this->rider->phone}", false);
+
+        // The rider can still finish it from their app.
+        $this->actingAs($this->rider)->post(route('delivery.orders.delivered', $order), ['collected_amount' => '70'])->assertSessionHasNoErrors();
+        $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);
+    }
+
+    public function test_admin_cannot_skip_steps(): void
+    {
+        $order = $this->placeOrder($this->customer, $this->product('10'), 1);
+
+        $this->actingAs($this->admin)->post(route('admin.orders.dispatch', $order))->assertSessionHasErrors('status');
+        $this->actingAs($this->admin)->post(route('admin.orders.deliver', $order), ['collected_amount' => '70'])->assertSessionHasErrors('status');
+        $this->actingAs($this->rider)->post(route('admin.orders.deliver', $order), ['collected_amount' => '70'])->assertForbidden();
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+    }
+
+    public function test_tracking_page_shows_when_each_step_happened(): void
+    {
+        $order = $this->placeOrder($this->customer, $this->product('10'), 1);
+        $this->travel(5)->minutes();
+        $this->actingAs($this->admin)->post(route('admin.orders.confirm', $order));
+        $this->actingAs($this->admin)->post(route('admin.orders.assign-delivery', $order), ['delivery_person_id' => $this->rider->id]);
+
+        $times = $order->fresh()->load('statusHistory')->statusTimes();
+        $this->assertSame(['pending', 'confirmed'], array_keys($times)); // the assignment note isn't a step
+
+        $this->actingAs($this->customer)->get(route('orders.show', $order))
+            ->assertSee('The shop has accepted your order.')
+            ->assertSee($times['confirmed']->format('d M, h:i A'));
+    }
+
     private function deliverableOrder()
     {
         $order = $this->placeOrder($this->customer, $this->product('10', '100.00'), 2);

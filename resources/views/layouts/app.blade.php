@@ -90,9 +90,7 @@
             <div class="flex flex-wrap items-start gap-2">
                 @if ($store->get('whatsapp_number'))
                     <a class="btn btn-secondary" href="https://wa.me/91{{ $store->get('whatsapp_number') }}" target="_blank" rel="noopener"><x-icon name="message" class="size-4" /> WhatsApp us</a>
-                @endif
-                <button type="button" data-install class="btn btn-primary hidden"><x-icon name="download" class="size-4" /> Install app</button>
-            </div>
+                @endif            </div>
         </div>
     </footer>
 

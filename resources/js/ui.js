@@ -1,4 +1,5 @@
-// Shared UI helpers: toasts, micro-animations, image fade-in, typing placeholder, PWA install, confirms.
+// Shared UI helpers: toasts, micro-animations, image fade-in, typing placeholder, OTP input, live refresh, confirms.
+import * as Turbo from '@hotwired/turbo';
 
 const ICONS = {
     success: '<path d="m5 12 5 5 9-10"/>',
@@ -67,20 +68,47 @@ function startTypingHints() {
     }, 2600);
 }
 
-// PWA install button.
-let deferredInstall = null;
-window.addEventListener('beforeinstallprompt', event => {
-    event.preventDefault();
-    deferredInstall = event;
-    document.querySelectorAll('[data-install]').forEach(el => el.classList.remove('hidden'));
+// OTP input: digits only, submit as soon as the full code is typed or auto-filled from the SMS.
+document.addEventListener('input', event => {
+    const input = event.target.closest('[data-otp-input]');
+    if (!input) return;
+    input.value = input.value.replace(/\D/g, '').slice(0, input.maxLength);
+    const form = input.form;
+    const ready = input.value.length === input.maxLength && [...form.elements].every(el => !el.required || el.value.trim());
+    if (ready && !form.dataset.submitted) {
+        form.dataset.submitted = '1';
+        form.requestSubmit();
+    }
 });
-document.addEventListener('click', async event => {
-    if (!event.target.closest('[data-install]') || !deferredInstall) return;
-    deferredInstall.prompt();
-    await deferredInstall.userChoice;
-    deferredInstall = null;
-    document.querySelectorAll('[data-install]').forEach(el => el.classList.add('hidden'));
-});
+
+// "Resend code" countdown.
+let resendTimer = null;
+function startResendCountdown() {
+    clearInterval(resendTimer);
+    const button = document.querySelector('[data-resend]');
+    if (!button) return;
+    let left = parseInt(button.dataset.resend, 10) || 0;
+    const label = 'Resend code';
+    const tick = () => {
+        button.disabled = left > 0;
+        button.textContent = left > 0 ? `${label} in ${left}s` : label;
+        if (left-- <= 0) clearInterval(resendTimer);
+    };
+    tick();
+    resendTimer = setInterval(tick, 1000);
+}
+
+// Live pages (order tracking, admin queues): morph-refresh in place every N seconds while visible and idle.
+let liveTimer = null;
+function startLiveRefresh() {
+    clearInterval(liveTimer);
+    const seconds = parseInt(document.querySelector('[data-live-refresh]')?.dataset.liveRefresh, 10);
+    if (!seconds) return;
+    liveTimer = setInterval(() => {
+        const typing = document.activeElement?.matches('input, textarea, select');
+        if (document.visibilityState === 'visible' && !typing) Turbo.visit(location.href, { action: 'replace' });
+    }, seconds * 1000);
+}
 
 // Confirmation prompts on destructive forms (capture phase so it runs before Turbo submits).
 document.addEventListener('submit', event => {
@@ -121,7 +149,8 @@ document.addEventListener('click', event => {
 document.addEventListener('turbo:load', () => {
     fadeInImages();
     startTypingHints();
-    if (deferredInstall) document.querySelectorAll('[data-install]').forEach(el => el.classList.remove('hidden'));
+    startResendCountdown();
+    startLiveRefresh();
     document.querySelectorAll('[data-toast]').forEach(el => {
         toast(el.textContent.trim(), el.dataset.toast);
         el.remove();

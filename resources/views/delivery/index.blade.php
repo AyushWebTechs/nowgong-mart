@@ -2,11 +2,8 @@
 
 @section('title', 'My deliveries')
 
-@push('head')
-    <meta http-equiv="refresh" content="60">
-@endpush
-
 @section('content')
+    <div data-live-refresh="30" hidden></div>
     <h1 class="mb-3 text-lg font-bold">Assigned to you ({{ $active->count() }})</h1>
 
     <div class="space-y-3">

@@ -119,19 +119,25 @@
                    href="https://wa.me/91{{ $order->customer_phone }}?text={{ rawurlencode("Hello {$order->customer_name}, your {$settings->get('store_name')} order {$order->order_number} is {$order->status->label()}. Total ".money($order->total).'.') }}">💬 WhatsApp update</a>
             </section>
 
+            <section class="card p-4">
+                <h2 class="mb-3 font-bold">Progress</h2>
+                @include('partials.order-tracker', ['order' => $order])
+            </section>
+
             <section class="card space-y-3 p-4 text-sm">
-                <h2 class="font-bold">Actions</h2>
+                <h2 class="font-bold">Next step</h2>
+
+                {{-- 1. Accept --}}
                 @if ($order->status === OrderStatus::Pending)
-                    <form method="POST" action="{{ route('admin.orders.confirm', $order) }}">@csrf<button class="btn btn-primary w-full">Confirm order</button></form>
-                @endif
-                @if ($order->status === OrderStatus::Confirmed)
-                    <form method="POST" action="{{ route('admin.orders.prepare', $order) }}">@csrf<button class="btn btn-primary w-full">Start preparing</button></form>
+                    <form method="POST" action="{{ route('admin.orders.confirm', $order) }}">@csrf<button class="btn btn-primary w-full">Accept order</button></form>
                 @endif
 
-                @if (in_array($order->status, [OrderStatus::Confirmed, OrderStatus::Preparing], true))
-                    <form method="POST" action="{{ route('admin.orders.assign-delivery', $order) }}" class="space-y-2">
+                {{-- 2. Pack (a rider can be assigned now so they know what's coming) --}}
+                @if ($order->status === OrderStatus::Confirmed)
+                    <form method="POST" action="{{ route('admin.orders.prepare', $order) }}">@csrf<button class="btn btn-primary w-full">Start packing</button></form>
+                    <form method="POST" action="{{ route('admin.orders.assign-delivery', $order) }}" class="space-y-2 border-t pt-3">
                         @csrf
-                        <label class="label" for="delivery_person_id">Delivery person</label>
+                        <label class="label" for="delivery_person_id">Delivery partner (optional)</label>
                         <select class="input" id="delivery_person_id" name="delivery_person_id" required>
                             <option value="">Choose…</option>
                             @foreach ($deliveryUsers as $user)
@@ -139,16 +145,45 @@
                             @endforeach
                         </select>
                         <button class="btn btn-secondary w-full">{{ $order->delivery_person_id ? 'Reassign' : 'Assign' }}</button>
-                        @if ($deliveryUsers->isEmpty())
-                            <p class="text-xs text-rose-600">No active delivery accounts. <a class="underline" href="{{ route('admin.delivery-users.index') }}">Create one</a>.</p>
-                        @endif
                     </form>
-                @elseif ($order->deliveryPerson)
-                    <p>🛵 Delivery: <strong>{{ $order->deliveryPerson->name }}</strong></p>
                 @endif
 
-                @if ($order->status === OrderStatus::Preparing && $order->delivery_person_id)
-                    <p class="text-xs text-gray-500">Waiting for {{ $order->deliveryPerson->name }} to pick up the order.</p>
+                {{-- 3. Send out: hand to a rider (they can also tap "Picked up" themselves) or deliver as the shop --}}
+                @if ($order->status === OrderStatus::Preparing)
+                    <form method="POST" action="{{ route('admin.orders.dispatch', $order) }}" class="space-y-2">
+                        @csrf
+                        <label class="label" for="dispatch_rider">Delivered by</label>
+                        <select class="input" id="dispatch_rider" name="delivery_person_id">
+                            <option value="">The shop (no delivery partner)</option>
+                            @foreach ($deliveryUsers as $user)
+                                <option value="{{ $user->id }}" @selected($order->delivery_person_id === $user->id)>{{ $user->name }} ({{ $user->phone }})</option>
+                            @endforeach
+                        </select>
+                        <button class="btn btn-primary w-full">Send out for delivery</button>
+                        <button class="btn btn-secondary w-full" formaction="{{ route('admin.orders.assign-delivery', $order) }}">Only assign. The partner taps "Picked up"</button>
+                    </form>
+                    @if ($order->deliveryPerson)
+                        <p class="text-xs text-gray-500">Assigned to {{ $order->deliveryPerson->name }}. Waiting for pick-up.</p>
+                    @endif
+                @endif
+
+                {{-- 4. Delivered (by the shop, or on the rider's behalf) --}}
+                @if ($order->status === OrderStatus::OutForDelivery)
+                    <p>Out with <strong>{{ $order->deliveryPerson?->name ?? 'the shop' }}</strong>.</p>
+                    <form method="POST" action="{{ route('admin.orders.deliver', $order) }}" class="space-y-2" data-confirm="Mark this order as delivered?">
+                        @csrf
+                        @if ($order->payment_method === \App\Enums\PaymentMethod::Cod)
+                            <label class="label" for="collected_amount">Cash collected (₹)</label>
+                            <input class="input" id="collected_amount" name="collected_amount" inputmode="decimal" value="{{ old('collected_amount', $order->total) }}" required>
+                        @endif
+                        <button class="btn btn-primary w-full">Mark delivered</button>
+                    </form>
+                @elseif (! $order->status->isOpen() && $order->deliveryPerson)
+                    <p>Delivered by <strong>{{ $order->deliveryPerson->name }}</strong></p>
+                @endif
+
+                @if (in_array($order->status, [OrderStatus::Confirmed, OrderStatus::Preparing], true) && $deliveryUsers->isEmpty())
+                    <p class="text-xs text-gray-500">No delivery partners yet. <a class="underline" href="{{ route('admin.delivery-users.index') }}">Add one</a> or deliver as the shop.</p>
                 @endif
 
                 @if ($order->status->canTransitionTo(OrderStatus::Cancelled))
@@ -161,7 +196,7 @@
                 @endif
 
                 @if (! $order->status->isOpen())
-                    <p class="text-gray-500">This order is {{ strtolower($order->status->label()) }}{{ $order->delivered_at ? ' on '.$order->delivered_at->format('d M, h:i A') : '' }}.</p>
+                    <p class="text-gray-500">No further steps. This order is {{ strtolower($order->status->label()) }}{{ $order->delivered_at ? ' on '.$order->delivered_at->format('d M, h:i A') : '' }}.</p>
                 @endif
             </section>
         </aside>

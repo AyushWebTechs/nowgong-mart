@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class Order extends Model
 {
@@ -58,6 +59,20 @@ class Order extends Model
     public function statusHistory(): HasMany
     {
         return $this->hasMany(OrderStatusHistory::class)->oldest('id');
+    }
+
+    /**
+     * When the order first reached each status (status value => time), read from its history.
+     *
+     * @return array<string, Carbon>
+     */
+    public function statusTimes(): array
+    {
+        return $this->statusHistory
+            ->filter(fn (OrderStatusHistory $entry) => $entry->from_status !== $entry->to_status)
+            ->unique(fn (OrderStatusHistory $entry) => $entry->to_status->value)
+            ->mapWithKeys(fn (OrderStatusHistory $entry) => [$entry->to_status->value => $entry->created_at])
+            ->all();
     }
 
     public function fullAddress(): string

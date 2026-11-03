@@ -31,6 +31,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',
@@ -70,6 +72,11 @@ class User extends Authenticatable
     public function assignedOrders(): HasMany
     {
         return $this->hasMany(Order::class, 'delivery_person_id');
+    }
+
+    public function otpCodes(): HasMany
+    {
+        return $this->hasMany(OtpCode::class);
     }
 
     public function cart(): HasOne

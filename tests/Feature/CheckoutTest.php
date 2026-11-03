@@ -171,7 +171,7 @@ class CheckoutTest extends TestCase
         $product = $this->product('10');
         $this->post(route('cart.items.store'), ['product_id' => $product->id, 'quantity' => 2])->assertSessionHasNoErrors();
 
-        $this->post(route('login'), ['phone' => $this->customer->phone, 'password' => 'password']);
+        $this->loginWithOtp($this->customer->phone)->assertRedirect(route('home'));
 
         $this->assertSame('2.000', $this->customer->cart->items()->first()->quantity);
     }

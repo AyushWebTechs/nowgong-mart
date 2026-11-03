@@ -2,11 +2,8 @@
 
 @section('title', 'Orders')
 
-@push('head')
-    <meta http-equiv="refresh" content="60">
-@endpush
-
 @section('content')
+    <div data-live-refresh="30" hidden></div>
     <h1 class="mb-4 text-xl font-bold">Orders</h1>
 
     <form method="GET" class="card mb-4 grid gap-3 p-4 sm:grid-cols-3 lg:grid-cols-6">

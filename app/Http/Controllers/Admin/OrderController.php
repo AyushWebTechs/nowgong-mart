@@ -66,7 +66,7 @@ class OrderController extends Controller
     {
         $this->orders->transition($order, OrderStatus::Preparing, $request->user());
 
-        return back()->with('success', "Order {$order->order_number} is being prepared.");
+        return back()->with('success', "Order {$order->order_number} is being packed.");
     }
 
     public function assignDelivery(Request $request, Order $order): RedirectResponse
@@ -77,6 +77,32 @@ class OrderController extends Controller
         $this->orders->assignDelivery($order, $deliveryPerson, $request->user());
 
         return back()->with('success', "Assigned to {$deliveryPerson->name}.");
+    }
+
+    public function dispatch(Request $request, Order $order): RedirectResponse
+    {
+        $data = $request->validate(['delivery_person_id' => ['nullable', 'integer']]);
+
+        $rider = isset($data['delivery_person_id']) ? User::findOrFail($data['delivery_person_id']) : null;
+        $updated = $this->orders->dispatch($order, $request->user(), $rider);
+
+        return back()->with('success', "Order {$order->order_number} is out for delivery".($updated->deliveryPerson ? " with {$updated->deliveryPerson->name}." : '.'));
+    }
+
+    public function deliver(Request $request, Order $order): RedirectResponse
+    {
+        $data = $request->validate([
+            'collected_amount' => [$order->payment_method === PaymentMethod::Cod ? 'required' : 'nullable', 'decimal:0,2', 'min:0', 'max:99999999'],
+        ]);
+
+        $updated = $this->orders->markDelivered($order, $request->user(), isset($data['collected_amount']) ? (string) $data['collected_amount'] : null);
+
+        $message = "Order {$order->order_number} delivered.";
+        if ($updated->payment_method === PaymentMethod::Cod && $updated->payment_status->value !== 'paid') {
+            $message .= ' The cash collected does not match the total - review the payment below.';
+        }
+
+        return back()->with('success', $message);
     }
 
     public function cancel(Request $request, Order $order): RedirectResponse

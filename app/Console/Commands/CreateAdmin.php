@@ -44,7 +44,7 @@ class CreateAdmin extends Command
         $user->fill(['name' => $data['name'], 'password' => $data['password']]);
         $user->forceFill(['role' => UserRole::Admin, 'is_active' => true])->save();
 
-        $this->info("Admin account ready for {$user->phone}. Log in at ".url('/login'));
+        $this->info("Admin account ready for {$user->phone}. Log in at ".url('/staff/login'));
 
         return self::SUCCESS;
     }

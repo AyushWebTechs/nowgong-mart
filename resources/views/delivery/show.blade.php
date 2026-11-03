@@ -49,7 +49,7 @@
                 <button class="btn btn-primary w-full py-4 text-base">📦 Picked up from shop</button>
             </form>
         @else
-            <p class="card p-4 text-center text-sm text-gray-600">The shop is getting this order ready. You can pick it up once it is being prepared.</p>
+            <p class="card p-4 text-center text-sm text-gray-600">The shop is getting this order ready. You can pick it up once it is being packed.</p>
         @endif
     @elseif ($order->status === OrderStatus::OutForDelivery)
         <form method="POST" action="{{ route('delivery.orders.delivered', $order) }}" class="card space-y-3 p-4" data-confirm="Mark this order as delivered?">

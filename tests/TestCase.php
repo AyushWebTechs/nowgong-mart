@@ -6,9 +6,12 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Sms\SmsSender;
 use App\Services\StoreSettings;
 use Database\Seeders\StoreSettingSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Testing\TestResponse;
+use Tests\Support\FakeSmsSender;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -17,6 +20,20 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->withoutVite();
+    }
+
+    protected function fakeSms(): FakeSmsSender
+    {
+        return $this->app->instance(SmsSender::class, new FakeSmsSender);
+    }
+
+    /** Full customer login: request a code for the number, then submit it. */
+    protected function loginWithOtp(string $phone, array $verifyPayload = []): TestResponse
+    {
+        $sms = $this->fakeSms();
+        $this->post(route('login.otp'), ['phone' => $phone])->assertRedirect(route('login.verify'));
+
+        return $this->post(route('login.verify'), ['code' => $sms->lastCode(), ...$verifyPayload]);
     }
 
     protected function seedSettings(array $overrides = []): void

@@ -5,6 +5,10 @@ namespace App\Providers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Services\CartService;
+use App\Services\Sms\Fast2SmsSender;
+use App\Services\Sms\LogSmsSender;
+use App\Services\Sms\SmsSender;
+use App\Services\Sms\TwoFactorSmsSender;
 use App\Services\StoreSettings;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -21,12 +25,19 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->scoped(StoreSettings::class);
         $this->app->scoped(CartService::class);
+
+        $this->app->bind(SmsSender::class, fn () => match (config('otp.driver')) {
+            '2factor' => new TwoFactorSmsSender((string) config('otp.2factor.key'), config('otp.2factor.template')),
+            'fast2sms' => new Fast2SmsSender((string) config('otp.fast2sms.key')),
+            default => new LogSmsSender,
+        });
     }
 
     public function boot(): void
     {
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(strtolower((string) $request->input('phone')).'|'.$request->ip()));
-        RateLimiter::for('register', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
+        RateLimiter::for('otp-send', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
+        RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
         RateLimiter::for('checkout', fn (Request $request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
 
         View::composer('*', function ($view) {

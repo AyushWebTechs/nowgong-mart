@@ -16,10 +16,23 @@ enum OrderStatus: string
         return match ($this) {
             self::Pending => 'Pending',
             self::Confirmed => 'Confirmed',
-            self::Preparing => 'Preparing',
+            self::Preparing => 'Packing',
             self::OutForDelivery => 'Out for delivery',
             self::Delivered => 'Delivered',
             self::Cancelled => 'Cancelled',
+        };
+    }
+
+    /** What the customer sees on the tracking page while the order is in this status. */
+    public function customerMessage(): string
+    {
+        return match ($this) {
+            self::Pending => 'Order placed. Waiting for the shop to accept it.',
+            self::Confirmed => 'The shop has accepted your order.',
+            self::Preparing => 'Your items are being packed.',
+            self::OutForDelivery => 'Your order is on the way!',
+            self::Delivered => 'Delivered. Enjoy!',
+            self::Cancelled => 'This order was cancelled.',
         };
     }
 

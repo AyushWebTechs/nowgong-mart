@@ -14,6 +14,7 @@
             ['admin.inventory.index', 'Inventory', 'admin.inventory.*'],
             ['admin.delivery-users.index', 'Delivery team', 'admin.delivery-users.*'],
             ['admin.customers.index', 'Customers', 'admin.customers.*'],
+            ['admin.login-history.index', 'Login history', 'admin.login-history.*'],
             ['admin.reports.sales', 'Sales report', 'admin.reports.*'],
             ['admin.settings.edit', 'Settings', 'admin.settings.*'],
         ];

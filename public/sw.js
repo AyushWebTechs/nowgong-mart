@@ -1,9 +1,8 @@
-const CACHE_NAME = 'nowgong-mart-static-v1';
+const CACHE_NAME = 'nowgong-mart-static-v2';
 const OFFLINE_URL = '/offline.html';
 const STATIC_FILES = [
   OFFLINE_URL,
-  '/icons/icon-192.png',
-  '/manifest.webmanifest'
+  '/icons/icon-192.png'
 ];
 
 self.addEventListener('install', event => {
